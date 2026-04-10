@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地震學互動教學系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .animate-wave { transition: transform 0.075s linear; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // 模擬 Lucide Icon 組件
+        const Icon = ({ name, className = "w-4 h-4" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} className={className}></i>;
+        };
+
+        const SeismologyApp = () => {
+            const [activeTab, setActiveTab] = useState('home');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [quizState, setQuizState] = useState({ answered: false, correct: null });
+            const [waveTime, setWaveTime] = useState(0);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setWaveTime(prev => (prev + 1) % 100);
+                }, 50);
+                return () => clearInterval(interval);
+            }, []);
+
+            const WaveAnimation = ({ type }) => {
+                const dots = Array.from({ length: 20 });
+                return (
+                    <div className="relative h-24 bg-slate-900 rounded-xl overflow-hidden border border-slate-700 my-4">
+                        <div className="absolute inset-0 flex items-center justify-around px-4">
+                            {dots.map((_, i) => {
+                                let style = {};
+                                if (type === 'P') {
+                                    const offset = Math.sin((i * 0.5) - (waveTime * 0.2)) * 10;
+                                    style = { transform: `translateX(${offset}px)` };
+                                } else {
+                                    const offset = Math.sin((i * 0.5) - (waveTime * 0.2)) * 15;
+                                    style = { transform: `translateY(${offset}px)` };
+                                }
+                                return (
+                                    <div key={i} className="flex flex-col items-center">
+                                        <div 
+                                            className={`w-2 h-2 rounded-full animate-wave ${type === 'P' ? 'bg-blue-400' : 'bg-amber-400'}`}
+                                            style={style}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="absolute top-2 left-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${type === 'P' ? 'bg-blue-600' : 'bg-amber-600'}`}>
+                                {type} 波 (彈性介質質點運動)
+                            </span>
+                        </div>
+                    </div>
+                );
+            };
+
+            const chapters = [
+                { id: 0, title: "1.1 地震學簡介", icon: "activity", content: "地震學是研究固體地球中彈性波或聲波的科學。它結構簡單卻威力強大：震源產生波，波經過介質傳播，最後由接收器記錄。", details: "地震學研究主要分為：震源、傳播路徑以及觀測站記錄。地震圖是這兩者的結合。", hasAnimation: true, question: "地震學能研究地底結構，主要是依賴什麼？", options: ["鑽探技術", "地震波速變化", "地表岩石顏色"], answer: 1, explanation: "波速變化反映出地球內部的分層。" },
+                { id: 1, title: "1.1.1 研究概覽", icon: "globe", content: "地震學是研究地球內部的主要工具。我們已知的地層結構都是透過地震波速隨深度的變化推導出來的。", details: "人類鑽井僅約 13 公里，地震學是觀測 6371 公里地心的唯一手段。", question: "哪一個層次是透過地震波發現為液態的？", options: ["地殼", "外核", "內核"], answer: 1, explanation: "S 波無法穿過液體，科學家觀測到 S 波影區確認外核為液態。" },
+                { id: 2, title: "1.1.2 地震學中的模型", icon: "layers", content: "科學進步是一個不斷學習與「反學習」的循環，舊模型會被新模型取代。", details: "地震學模型從簡單的層狀結構演進到今日複雜的 3D 斷層掃描。", question: "板塊構造學說在 1960 年代前未被廣泛接受的原因？", options: ["沒地震", "缺乏物理機制", "不相信有海底"], answer: 1, explanation: "直到海洋地球物理數據證明了地殼生成與隱沒機制。" },
+                { id: 3, title: "1.2 地震與社會", icon: "shield", content: "地震學具有極高的社會應用價值。它不只是學術研究，更是保護生命財產的防線。", details: "地震學家必須在科學精確性與社會溝通之間取得平衡。", question: "地震學對社會的主要貢獻不包括？", options: ["災害風險評估", "精準預測秒數", "監測核試爆"], answer: 1, explanation: "目前尚無法精準預測地震發生的確切秒數。" },
+                { id: 4, title: "1.2.1 危害與風險", icon: "alert-triangle", content: "危害 (Hazard) 是自然現象本身，而風險 (Risk) 是對人類社會造成的潛在損失。", details: "減少風險的方法：改變建築方式或改變人類行為。", question: "在同樣強度的地震下：", options: ["兩者風險相同", "荒漠危害大於風險", "兩者危害相同但風險不同"], answer: 2, explanation: "風險與受災體（人、建物）的分布有關。" },
+                { id: 5, title: "1.2.2 工程地震學", icon: "hard-hat", content: "工程地震學研究地面震動如何影響結構。不同建築對不同頻率的波有不同反應。", details: "耐震法規參考過去紀錄，預估未來可能面臨的最大地面加速度 (PGA)。", question: "為什麼高樓層建築對長週期波較敏感？", options: ["樓比較重", "自然週期長易共振", "長週期波能量大"], answer: 1, explanation: "頻率接近建築自然頻率時會引發共振。" },
+                { id: 6, title: "1.2.3 基礎設施", icon: "layers", content: "關鍵設施損壞往往引發次生災害。現代工程強調「韌性」，確保快速恢復。", details: "橫跨斷層的管線需要特殊的柔性設計。", question: "地震後城市最常見的次生災害是？", options: ["火山噴發", "管線破裂火災", "氣候變遷"], answer: 1, explanation: "瓦斯管線破裂是極常見的二次災害。" },
+                { id: 7, title: "1.2.4 海嘯與液化", icon: "droplets", content: "地震會引發連鎖反應。海嘯由海底垂直錯動引發；液化發生在飽和沙土地層。", details: "液化使沙土失去剪力強度。海嘯在深海傳播極快。", question: "土壤液化最容易發生在？", options: ["堅硬岩盤", "鬆散沙質平原", "乾旱沙漠"], answer: 1, explanation: "需要「鬆散砂土」與「飽和水份」兩個條件。" },
+                { id: 8, title: "1.2.5 機率預報", icon: "activity", content: "預報 (Forecasting) 是長期機率評估，基於古地震學數據研究重複週期。", details: "長期預報能指導資源分配，強化減災準備。", question: "機率預報的主要目的是？", options: ["通知放假", "法規與計畫參考", "讓房價下跌"], answer: 1, explanation: "作為建築法規與都市計畫的參考依據。" },
+                { id: 9, title: "1.2.6 地震預測", icon: "alert-triangle", content: "精確預測目前在科學上仍極其困難，前兆尚未能通過嚴謹檢證。", details: "加強耐震設計比追求不可靠的預測更實際。", question: "目前對地震預測的態度是？", options: ["完全掌握", "尚無可靠方法", "預測是騙人的"], answer: 1, explanation: "目前尚未找到放諸四海皆準的預測機制。" },
+                { id: 10, title: "1.2.7 即時警報 (EEW)", icon: "zap", content: "利用 P 波與 S 波的時間差，在破壞性 S 波到達前爭取數秒時間。", details: "這數秒可用於關閉瓦斯、高鐵煞車、民眾避難。", question: "EEW 能運作的物理原理是？", options: ["電磁波比地震波快", "S 波比 P 波快", "地震儀看見未來"], answer: 0, explanation: "電磁波傳播速度遠快於地震波。" },
+                { id: 11, title: "1.2.8 核武監測", icon: "radio", content: "地震學是監測地下核試爆的核心。透過波形分析區分斷層錯動與爆炸。", details: "核試爆產生極強 P 波，但 S 波相對較弱。", question: "如何區分地震與核試爆？", options: ["核試爆無波", "核試爆 P 波比例極高", "看儀器是否發光"], answer: 1, explanation: "爆炸源主要向外推擠，產生極強 P 波。" },
+                { id: 12, title: "1.3 結語", icon: "book-open", content: "地震學結合了數學的優美與地質學的實務。透過技術，我們正加速解析地球。", details: "理解模型建立的邏輯比記住結論更重要。", question: "學習地震學最好的心態是？", options: ["死背公式", "理解模型修正過程", "只關心考題"], answer: 1, explanation: "科學是動態的，理解邏輯最重要。" }
+            ];
+
+            return (
+                <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row">
+                    {/* 側邊導航 */}
+                    <nav className={`fixed inset-y-0 left-0 w-72 bg-slate-900 text-white transform transition-transform duration-300 z-50 overflow-y-auto ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 border-r border-slate-800`}>
+                        <div className="p-6 flex justify-between items-center border-b border-slate-800 bg-slate-950 sticky top-0 z-10">
+                            <div className="flex items-center gap-2">
+                                <Icon name="activity" className="text-blue-400 w-5 h-5" />
+                                <h2 className="text-lg font-bold">章節目錄</h2>
+                            </div>
+                            <button onClick={() => setIsMenuOpen(false)} className="lg:hidden p-1 hover:bg-slate-800 rounded"><Icon name="x" /></button>
+                        </div>
+                        <div className="p-4 space-y-1">
+                            <button onClick={() => { setActiveTab('home'); setIsMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-4 ${activeTab === 'home' ? 'bg-blue-600' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                <Icon name="home" /> <span className="font-bold">返回首頁</span>
+                            </button>
+                            {chapters.map((chap, idx) => (
+                                <button key={idx} onClick={() => { setActiveTab(idx); setIsMenuOpen(false); window.scrollTo(0,0); setQuizState({answered:false, correct:null}); }}
+                                    className={`w-full text-left px-4 py-2.5 rounded-lg text-xs flex items-center gap-3 ${activeTab === idx ? 'bg-slate-800 text-blue-400' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                    <Icon name={chap.icon} /> <span className="truncate">{chap.title}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </nav>
+
+                    <main className="flex-1 lg:ml-72 p-4 md:p-8">
+                        <div className="max-w-4xl mx-auto">
+                            <div className="lg:hidden mb-4 flex items-center bg-white p-3 rounded-xl border border-slate-200">
+                                <button onClick={() => setIsMenuOpen(true)} className="p-2 bg-slate-100 rounded text-slate-600 mr-3"><Icon name="menu" /></button>
+                                <span className="font-bold">地震學互動教學</span>
+                            </div>
+
+                            {activeTab === 'home' ? (
+                                <div className="space-y-10">
+                                    <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
+                                        <h1 className="text-4xl md:text-5xl font-black mb-6 leading-tight">探索地球的<br/><span className="text-blue-400">第一聲脈動</span></h1>
+                                        <p className="text-slate-400 text-lg max-w-lg mb-8">歡迎來到地震學第一章。本系統整合了課本 13 項核心主題與動態模擬。</p>
+                                        <button onClick={() => setActiveTab(0)} className="px-8 py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-500 flex items-center gap-2">開始學習 <Icon name="arrow-right" /></button>
+                                    </div>
+                                    <section className="bg-white p-8 rounded-3xl border border-slate-200">
+                                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Icon name="activity" className="text-blue-600" /> 基礎波形預覽</h3>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <WaveAnimation type="P" />
+                                            <WaveAnimation type="S" />
+                                        </div>
+                                    </section>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
+                                    <div className="p-6 md:p-10">
+                                        <header className="mb-8 flex justify-between items-center border-b border-slate-100 pb-6">
+                                            <div>
+                                                <h2 className="text-3xl font-black text-slate-800 mb-2">{chapters[activeTab].title}</h2>
+                                                <p className="text-blue-600 text-xs font-bold tracking-widest uppercase">SECTION {activeTab + 1}</p>
+                                            </div>
+                                            <button onClick={() => setActiveTab('home')} className="p-3 text-slate-400 hover:text-blue-500"><Icon name="home"/></button>
+                                        </header>
+                                        {(activeTab === 0 || chapters[activeTab].hasAnimation) && (
+                                            <div className="grid md:grid-cols-2 gap-4 my-6">
+                                                <WaveAnimation type="P" />
+                                                <WaveAnimation type="S" />
+                                            </div>
+                                        )}
+                                        <p className="text-lg text-slate-600 leading-relaxed mb-6">{chapters[activeTab].content}</p>
+                                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase mb-3 flex items-center gap-2"><Icon name="info" size={14} /> 課文詳細說明</h4>
+                                            <p className="text-slate-600 italic text-sm">{chapters[activeTab].details}</p>
+                                        </div>
+                                        <div className="bg-slate-900 text-white p-8 rounded-3xl">
+                                            <h4 className="text-blue-400 font-bold mb-4 flex items-center gap-2"><Icon name="zap" size={18} /> 概念驗證</h4>
+                                            <p className="text-lg mb-6">{chapters[activeTab].question}</p>
+                                            <div className="space-y-3">
+                                                {chapters[activeTab].options.map((opt, i) => (
+                                                    <button key={i} disabled={quizState.answered} onClick={() => setQuizState({ answered: true, correct: i === chapters[activeTab].answer })}
+                                                        className={`w-full text-left p-4 rounded-xl border transition-all ${quizState.answered ? (i === chapters[activeTab].answer ? 'bg-green-600/20 border-green-500 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-500') : 'bg-slate-800/50 border-slate-700 hover:border-blue-500'}`}>
+                                                        {opt}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {quizState.answered && (
+                                                <div className="mt-4 p-4 rounded-lg bg-blue-500/10 text-blue-300 text-sm">
+                                                    {chapters[activeTab].explanation}
+                                                    <button onClick={() => setQuizState({answered:false, correct:null})} className="ml-4 underline text-white">重試</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SeismologyApp />);
+    </script>
+</body>
+</html>
